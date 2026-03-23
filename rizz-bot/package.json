@@ -1,0 +1,17 @@
+{
+    "name": "troller-bot",
+    "version": "1.0.0",
+    "description": "A Discord troller bot with rizz tracking and image trolling",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "nodemon index.js"
+    },
+    "dependencies": {
+        "discord.js": "^14.0.0",
+        "dotenv": "^16.0.0"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.0"
+    }
+}
