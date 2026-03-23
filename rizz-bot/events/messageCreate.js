@@ -1,41 +1,41 @@
-const { incrementRizz, getRizzTitle } = require("../handlers/rizz");
-const {
-    buildTrollPayload,
-    getRandomRizzComment,
-} = require("../handlers/trollEngine");
+const { incrementRizz, getNextLevel } = require("../handlers/rizz");
+const { buildTrollPayload } = require("../handlers/trollEngine");
 const config = require("../config");
 
 module.exports = {
     name: "messageCreate",
     async execute(message) {
-        // Ignore bot messages
         if (message.author.bot) return;
 
         const userId = message.author.id;
 
-        // ─── 1. INCREMENT RIZZ ──────────────────────────────────────────────
-        const newRizz = incrementRizz(userId, config.rizzPerMessage);
-        const title = getRizzTitle(newRizz);
+        // ── 1. INCREMENT RIZZ + LEVEL UP CHECK ────────────────────────────────────
+        const { newScore, newLevel, leveledUp } = incrementRizz(
+            userId,
+            config.rizzPerMessage,
+        );
 
-        // Milestone announcements (every 50 rizz)
-        if (newRizz % 50 === 0) {
+        if (leveledUp) {
+            const next = getNextLevel(newScore);
+            const nextInfo = next
+                ? `\n> Next level: **${next.title}** at **${next.required} msgs**`
+                : `\n> 👑 MAX LEVEL REACHED`;
+
             await message.channel.send(
-                `📊 **Rizz Update!** <@${userId}> just hit **${newRizz} rizz points**!\n` +
-                    `Current title: **${title}** 🎖️`,
+                `🎉 **LEVEL UP!** <@${userId}> is now **${newLevel.title}**!\n` +
+                    `> Messages: **${newScore}**` +
+                    nextInfo,
             );
         }
 
-        // ─── 2. RANDOM TROLL IMAGE TRIGGER ─────────────────────────────────
-        // Never fire on the bot owner
+        // ── 2. RANDOM TROLL IMAGE TRIGGER ─────────────────────────────────────────
         if (
             userId !== config.ownerId &&
             Math.random() < config.randomImageChance
         ) {
             const payload = await buildTrollPayload(userId);
-            const rizzComment = getRandomRizzComment();
-
             await message.channel.send({
-                content: `🎲 **Random troll activated!**\n${payload.content}${rizzComment}`,
+                content: `🎲 **Random troll activated on** <@${userId}>!\n${payload.content}`,
                 files: payload.files,
             });
         }

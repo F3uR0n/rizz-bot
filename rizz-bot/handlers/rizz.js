@@ -3,42 +3,75 @@ const path = require("path");
 
 const DATA_FILE = path.join(__dirname, "../data/rizz.json");
 
-// Load rizz data from disk, or start fresh
 function loadRizz() {
     if (!fs.existsSync(DATA_FILE)) {
         fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
         fs.writeFileSync(DATA_FILE, JSON.stringify({}));
     }
-    return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+    const raw = fs.readFileSync(DATA_FILE, "utf8").trim();
+    return raw ? JSON.parse(raw) : {};
 }
 
-// Save rizz data to disk
 function saveRizz(data) {
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
-// Increment rizz for a user, return new total
-function incrementRizz(userId, amount = 1) {
-    const data = loadRizz();
-    data[userId] = (data[userId] || 0) + amount;
-    saveRizz(data);
-    return data[userId];
+// ── LEVEL SYSTEM ──────────────────────────────────────────────────────────────
+// Each level requires this many TOTAL messages to reach
+const LEVELS = [
+    { level: 0, required: 0, title: "🫠 Rizz Rookie" },
+    { level: 1, required: 1, title: "🙂 Rizz Apprentice" }, // 1 msg
+    { level: 2, required: 3, title: "😎 Mid-Level Rizzer" }, // 2 more msgs
+    { level: 3, required: 8, title: "😏 Certified Rizzy" }, // 5 more msgs
+    { level: 4, required: 18, title: "💅 Elite Rizz Lord" }, // 10 more msgs
+    { level: 5, required: 38, title: "🔥 LEGENDARY RIZZLER" }, // 20 more msgs
+];
+
+function getLevel(score) {
+    let current = LEVELS[0];
+    for (const l of LEVELS) {
+        if (score >= l.required) current = l;
+    }
+    return current;
 }
 
-// Get rizz for a user
+function getNextLevel(score) {
+    for (const l of LEVELS) {
+        if (score < l.required) return l;
+    }
+    return null; // already max level
+}
+
+// Increment score, return { newScore, oldLevel, newLevel, leveledUp }
+function incrementRizz(userId, amount = 1) {
+    const data = loadRizz();
+    const oldScore = data[userId] || 0;
+    const oldLevel = getLevel(oldScore);
+
+    data[userId] = oldScore + amount;
+    saveRizz(data);
+
+    const newScore = data[userId];
+    const newLevel = getLevel(newScore);
+    const leveledUp = newLevel.level > oldLevel.level;
+
+    return { newScore, oldLevel, newLevel, leveledUp };
+}
+
 function getRizz(userId) {
     const data = loadRizz();
     return data[userId] || 0;
 }
 
-// Get a rizz title based on score
 function getRizzTitle(score) {
-    if (score >= 500) return "🔥 LEGENDARY RIZZLER";
-    if (score >= 200) return "💅 Elite Rizz Lord";
-    if (score >= 100) return "😏 Certified Rizzy";
-    if (score >= 50) return "😎 Mid-Level Rizzer";
-    if (score >= 20) return "🙂 Rizz Apprentice";
-    return "🫠 Rizz Rookie";
+    return getLevel(score).title;
 }
 
-module.exports = { incrementRizz, getRizz, getRizzTitle };
+module.exports = {
+    incrementRizz,
+    getRizz,
+    getRizzTitle,
+    getLevel,
+    getNextLevel,
+    LEVELS,
+};

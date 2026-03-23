@@ -3,9 +3,9 @@ const path = require("path");
 const { AttachmentBuilder } = require("discord.js");
 
 const IMAGES_DIR = path.join(__dirname, "../images");
+const PERSONAL_ROASTS = require("../data/personalRoasts");
 
-// Troll messages sent when someone is trolled
-const TROLL_MESSAGES = [
+const TROLL_INTROS = [
     "💀 EXPOSED! Look at this mf right here:",
     "😭 Bro really thought they were something:",
     "🤣 The server has spoken. Witness:",
@@ -16,58 +16,76 @@ const TROLL_MESSAGES = [
     "👀 The algorithm chose you today:",
 ];
 
-// Backfire messages when the troll gets trolled instead
-const BACKFIRE_MESSAGES = [
+const GENERIC_ROASTS = [
+    "Their search history would end careers.",
+    "Even autocorrect gave up on them.",
+    "They type with one finger. Confidently.",
+    "Last picked in gym class. Still.",
+    "Their WiFi password is their own name.",
+    "They reply 'k' to paragraphs.",
+    "Sends voice notes instead of typing.",
+    "Still uses Internet Explorer unironically.",
+    "Their bio says 'I'm not like others'.",
+    "Laughs at their own jokes before finishing them.",
+];
+
+const BACKFIRE_INTROS = [
     "💀 PLOT TWIST! The troll backfired! Look at the TROLLER:",
     "😂 You tried to troll but the universe chose YOU:",
     "🤡 Troll attempt failed. YOU got exposed instead:",
     "☠️ The rizz gods have spoken — troller gets trolled:",
 ];
 
-// Random rizz comments added to messages
-const RIZZ_COMMENTS = [
-    "Bro's rizz is on another level 📈",
-    "The audacity. The rizz.",
-    "Rizz increment detected 👀",
-    "This message added +1 to the rizz counter fr",
-    "Certified message. Rizz noted.",
-];
-
-// Get a random element from an array
 function random(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// Check if an image exists for the user (any extension)
+// Supports multiple images per person
+// Single image:   USERID.jpg
+// Multiple images: USERID_1.jpg, USERID_2.png, USERID_3.jpg
 function getUserImage(userId) {
     if (!fs.existsSync(IMAGES_DIR)) return null;
     const files = fs.readdirSync(IMAGES_DIR);
-    const match = files.find((f) => f.startsWith(userId + "."));
-    return match ? path.join(IMAGES_DIR, match) : null;
+    const matches = files.filter((f) => {
+        const name = path.parse(f).name;
+        return name === userId || name.startsWith(userId + "_");
+    });
+    if (matches.length === 0) return null;
+    return path.join(IMAGES_DIR, random(matches));
 }
 
-// Build a troll message payload for a target user
+function getRoastLine(userId) {
+    const personal = PERSONAL_ROASTS[userId];
+    if (personal && personal.length > 0) return random(personal);
+    return random(GENERIC_ROASTS);
+}
+
 async function buildTrollPayload(targetId, isSelf = false) {
-    const msg = isSelf ? random(BACKFIRE_MESSAGES) : random(TROLL_MESSAGES);
+    const intro = isSelf ? random(BACKFIRE_INTROS) : random(TROLL_INTROS);
     const imagePath = getUserImage(targetId);
+    const files = [];
 
-    const payload = {
-        content: `${msg}\n<@${targetId}>`,
-        files: [],
-    };
+    const availableModes = [0, 2];
+    if (imagePath) availableModes.push(1);
+    const mode = random(availableModes);
 
-    if (imagePath) {
-        payload.files.push(new AttachmentBuilder(imagePath));
+    let content = `${intro}\n<@${targetId}>`;
+
+    if (mode === 1) {
+        content += "\n*(the image speaks for itself)*";
+        files.push(new AttachmentBuilder(imagePath));
+    } else if (mode === 2) {
+        const roast = getRoastLine(targetId);
+        content += `\n> 🎤 *"${roast}"*`;
+        if (imagePath && Math.random() < 0.4) {
+            files.push(new AttachmentBuilder(imagePath));
+        }
     } else {
-        payload.content += "\n*(no image on file for this legend... yet)*";
+        const roast = random(GENERIC_ROASTS);
+        content += `\n> 💬 ${roast}`;
     }
 
-    return payload;
+    return { content, files };
 }
 
-// A random rizz comment to sprinkle into messages
-function getRandomRizzComment() {
-    return Math.random() < 0.15 ? `\n> *${random(RIZZ_COMMENTS)}*` : "";
-}
-
-module.exports = { buildTrollPayload, getRandomRizzComment };
+module.exports = { buildTrollPayload };
