@@ -2,13 +2,21 @@ require("dotenv").config();
 
 module.exports = {
     token: process.env.DISCORD_TOKEN,
-    ownerId: process.env.OWNER_ID, // YOU — can never be trolled
+    ownerId: process.env.OWNER_ID,
 
-    // Chance (0.0 to 1.0) that a random troll image fires on a message
-    randomImageChance: 0.05, // 5% chance per message
+    randomImageChance: 0.05,
+    backfireChance: 0.3,
+    rizzPerMessage: 1,
 
-    // Chance (0.0 to 1.0) that when X trolls Y, X's own image backfires
-    backfireChance: 0.3, // 30% chance the troll backfires on the requester
-
-    rizzPerMessage: 1, // Base rizz gained per message
+    openai: {
+        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        maxTokens: 100,
+        temperature: 0.9,
+        // Minimum ms between AI roasts for the same user (prevents spam cost)
+        perUserCooldownMs: 60 * 1000,
+        // Max OpenAI calls per minute across all users
+        maxPerMinute: 20,
+        // How many past roasts to remember per user (for variety)
+        recentRoastMemory: 5,
+    },
 };

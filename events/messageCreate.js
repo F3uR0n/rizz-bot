@@ -34,10 +34,8 @@ module.exports = {
             Math.random() < config.randomImageChance
         ) {
             const payload = await buildTrollPayload(userId);
-            await message.channel.send({
-                content: `🎲 **Random troll activated on** <@${userId}>!\n${payload.content}`,
-                files: payload.files,
-            });
+            const body = [`<@${userId}>`, payload.content].filter(Boolean).join("\n");
+            await message.channel.send({ content: body, files: payload.files });
         }
     },
 };

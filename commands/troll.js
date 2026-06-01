@@ -1,6 +1,5 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { buildTrollPayload } = require("../handlers/trollEngine");
-const { getRizz, getRizzTitle } = require("../handlers/rizz");
 const config = require("../config");
 
 module.exports = {
@@ -21,7 +20,7 @@ module.exports = {
         // ─── PROTECTION: Nobody trolls the owner ───────────────────────────
         if (target.id === config.ownerId) {
             return interaction.reply({
-                content: `🛡️ **NICE TRY.** <@${caller.id}> tried to troll the inventor of this bot.\nThe audacity. The disrespect. The CLOWNERY. 🤡`,
+                content: `<@${caller.id}> tried to troll the owner. Nice try.`,
                 ephemeral: false,
             });
         }
@@ -43,20 +42,16 @@ module.exports = {
             Math.random() < config.backfireChance;
 
         const actualTarget = backfired ? caller : target;
-        const payload = await buildTrollPayload(actualTarget.id, backfired);
+        const payload = await buildTrollPayload(actualTarget.id);
 
-        // ─── RIZZ STATS FOR TARGET ─────────────────────────────────────────
-        const rizz = getRizz(actualTarget.id);
-        const title = getRizzTitle(rizz);
+        const header = backfired
+            ? `<@${caller.id}> trolled <@${target.id}> — backfired`
+            : `<@${caller.id}> trolled <@${target.id}>`;
 
-        const intro = backfired
-            ? `🔄 <@${caller.id}> tried to troll <@${target.id}> but it BACKFIRED!\n`
-            : `🎯 <@${caller.id}> deployed a troll on <@${target.id}>!\n`;
-
-        const rizzLine = `\n📊 <@${actualTarget.id}>'s rizz: **${rizz}** | Title: **${title}**`;
+        const body = [header, payload.content].filter(Boolean).join("\n");
 
         await interaction.editReply({
-            content: intro + payload.content + rizzLine,
+            content: body,
             files: payload.files,
         });
     },

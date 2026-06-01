@@ -1,21 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 const { AttachmentBuilder } = require("discord.js");
+const { getProfile } = require("./profiles");
+const { generateRoast } = require("./openaiRoaster");
 
 const IMAGES_DIR = path.join(__dirname, "../images");
-const PERSONAL_ROASTS = require("../data/personalRoasts");
-
-const TROLL_INTROS = [
-    "💀 EXPOSED! Look at this mf right here:",
-    "😭 Bro really thought they were something:",
-    "🤣 The server has spoken. Witness:",
-    "☠️ There's no coming back from this:",
-    "🔥 We found the footage bestie:",
-    "📸 Leaked. Can't delete this:",
-    "🚨 BREAKING NEWS from the troll department:",
-    "👀 The algorithm chose you today:",
-];
-
 const GENERIC_ROASTS = [
     "Their search history would end careers.",
     "Even autocorrect gave up on them.",
@@ -29,20 +18,10 @@ const GENERIC_ROASTS = [
     "Laughs at their own jokes before finishing them.",
 ];
 
-const BACKFIRE_INTROS = [
-    "💀 PLOT TWIST! The troll backfired! Look at the TROLLER:",
-    "😂 You tried to troll but the universe chose YOU:",
-    "🤡 Troll attempt failed. YOU got exposed instead:",
-    "☠️ The rizz gods have spoken — troller gets trolled:",
-];
-
 function random(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// Supports multiple images per person
-// Single image:   USERID.jpg
-// Multiple images: USERID_1.jpg, USERID_2.png, USERID_3.jpg
 function getUserImage(userId) {
     if (!fs.existsSync(IMAGES_DIR)) return null;
     const files = fs.readdirSync(IMAGES_DIR);
@@ -55,13 +34,30 @@ function getUserImage(userId) {
 }
 
 function getRoastLine(userId) {
-    const personal = PERSONAL_ROASTS[userId];
-    if (personal && personal.length > 0) return random(personal);
+    const profile = getProfile(userId);
+    if (profile) {
+        const pool = [
+            ...(profile.weaknesses || []),
+            ...(profile.insideJokes || []),
+        ].filter(Boolean);
+        if (pool.length > 0) return random(pool);
+    }
     return random(GENERIC_ROASTS);
 }
 
-async function buildTrollPayload(targetId, isSelf = false) {
-    const intro = isSelf ? random(BACKFIRE_INTROS) : random(TROLL_INTROS);
+async function getAIRoastLine(userId) {
+    const profile = getProfile(userId);
+    if (profile) {
+        const aiRoast = await generateRoast(profile);
+        if (aiRoast) return aiRoast;
+    }
+    return getRoastLine(userId);
+}
+
+// Returns { content: string, files: [] }
+// content is the roast text only — no mention, no intro.
+// Callers are responsible for the header line.
+async function buildTrollPayload(targetId) {
     const imagePath = getUserImage(targetId);
     const files = [];
 
@@ -69,20 +65,17 @@ async function buildTrollPayload(targetId, isSelf = false) {
     if (imagePath) availableModes.push(1);
     const mode = random(availableModes);
 
-    let content = `${intro}\n<@${targetId}>`;
+    let content = "";
 
     if (mode === 1) {
-        content += "\n*(the image speaks for itself)*";
         files.push(new AttachmentBuilder(imagePath));
     } else if (mode === 2) {
-        const roast = getRoastLine(targetId);
-        content += `\n> 🎤 *"${roast}"*`;
+        content = await getAIRoastLine(targetId);
         if (imagePath && Math.random() < 0.4) {
             files.push(new AttachmentBuilder(imagePath));
         }
     } else {
-        const roast = random(GENERIC_ROASTS);
-        content += `\n> 💬 ${roast}`;
+        content = random(GENERIC_ROASTS);
     }
 
     return { content, files };
